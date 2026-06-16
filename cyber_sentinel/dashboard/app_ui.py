@@ -6,6 +6,7 @@ import time
 import sqlite3
 import os
 import folium
+import hashlib
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
 
@@ -204,9 +205,8 @@ if 'current_page' not in st.session_state:
 if 'selected_campaign' not in st.session_state:
     st.session_state.selected_campaign = None
 
-# Alert status is managed in the database
-
-API_BASE_URL = "http://localhost:8080"
+# Alert status is managed in
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8080")
 # Resolve DB path relative to this dashboard file (works on any machine)
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(_SCRIPT_DIR, "..", "cyber_sentinel.db")
@@ -240,7 +240,7 @@ with st.sidebar:
     # API Live Connection Status Bar
     api_online = True
     try:
-        health_check = requests.get(f"{API_BASE_URL}/api/v1/analytics/dashboard-feed", timeout=1.5)
+        health_check = requests.get(f"{API_BASE_URL}/health", timeout=1.5)
         st.markdown("""
             <div style='text-align: center; padding: 4px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 4px; color: #34D399; font-size: 0.75rem; margin-bottom: 20px; font-weight: 600;'>
                 ● CORE ENGINE CONNECTED
@@ -284,7 +284,7 @@ with st.sidebar:
 
 # 7. Pull Live Data Feed from Core Engine
 try:
-    response = requests.get(f"{API_BASE_URL}/api/v1/analytics/dashboard-feed", timeout=2.0).json()
+    response = requests.get(f"{API_BASE_URL}/api/v1/analytics/dashboard-feed", timeout=30.0).json()
     df = pd.DataFrame(response)
 except Exception:
     df = pd.DataFrame()
@@ -674,7 +674,7 @@ elif st.session_state.current_page == "Map":
         st.markdown("""
             <div class="saas-card" style="padding: 12px 18px;">
                 <div class="saas-metric-title">Regional Target</div>
-                <div style="font-size:1.5rem; font-weight:700;">Delhi/NCR Hotspot</div>
+                <div style="font-size:1.5rem; font-weight:700;">Pan-India Hotspots</div>
                 <p style="font-size:0.8rem; color:#9CA3AF; margin:0;">Highest target focus regional observations.</p>
             </div>
         """, unsafe_allow_html=True)
@@ -682,10 +682,16 @@ elif st.session_state.current_page == "Map":
     # Build coordinates array
     map_coords = []
     locations_pool = [
-        {"lat": 28.4595, "lon": 77.0266, "city": "Delhi/NCR Origin Server"},
-        {"lat": 28.4230, "lon": 77.1006, "city": "Sector 56 Gurugram Hotspot"},
-        {"lat": 28.4950, "lon": 77.0898, "city": "Cyber City Gurugram Hotspot"},
-        {"lat": 28.4922, "lon": 77.1025, "city": "DLF Phase 3 Gurugram Hotspot"},
+        {"lat": 28.6139, "lon": 77.2090, "city": "Delhi/NCR Server"},
+        {"lat": 19.0760, "lon": 72.8777, "city": "Mumbai Server"},
+        {"lat": 12.9716, "lon": 77.5946, "city": "Bangalore Proxy Hub"},
+        {"lat": 13.0827, "lon": 80.2707, "city": "Chennai Host"},
+        {"lat": 22.5726, "lon": 88.3639, "city": "Kolkata Origin"},
+        {"lat": 17.3850, "lon": 78.4867, "city": "Hyderabad Server"},
+        {"lat": 18.5204, "lon": 73.8567, "city": "Pune Hotspot"},
+        {"lat": 23.0225, "lon": 72.5714, "city": "Ahmedabad Host"},
+        {"lat": 26.9124, "lon": 75.7873, "city": "Jaipur Origin"},
+        {"lat": 26.8467, "lon": 80.9462, "city": "Lucknow Host"},
         {"lat": 1.3521, "lon": 103.8198, "city": "Singapore Host (DigitalOcean)"},
         {"lat": 37.7749, "lon": -122.4194, "city": "USA Cloudflare Proxy Host"},
         {"lat": 55.7558, "lon": 37.6173, "city": "Russia Proxy Host"},
@@ -697,10 +703,17 @@ elif st.session_state.current_page == "Map":
         if val and str(val) != "None":
             urls_list = [u.strip() for u in str(val).split(",") if u.strip()]
             for url in urls_list:
-                loc_idx = hash(url) % len(locations_pool)
+                stable_hash = int(hashlib.md5(url.encode('utf-8')).hexdigest(), 16)
+                loc_idx = stable_hash % len(locations_pool)
                 loc = locations_pool[loc_idx]
+                
+                # Use a stable random seed per domain so markers don't jump around on refresh
+                random.seed(stable_hash)
                 lat_noise = random.uniform(-0.02, 0.02)
                 lon_noise = random.uniform(-0.02, 0.02)
+                # Reset random seed to avoid affecting other global processes
+                random.seed()
+                
                 map_coords.append({
                     "lat": loc["lat"] + lat_noise,
                     "lon": loc["lon"] + lon_noise,
@@ -899,6 +912,27 @@ elif st.session_state.current_page == "Reports":
                     if res.status_code == 200:
                         count = res.json().get("new_raw_records_collected", 0)
                         st.success(f"Success! Telegram Scraper complete. Ingested {count} new messages.")
+                        time.sleep(1.5)
+                        st.rerun()
+                    else:
+                        st.error("Scraper invocation error on backend server.")
+                except Exception as e:
+                    st.error(f"Failed to connect to API: {e}")
+
+        # 3. Reddit Social Media Scanner Button
+        st.markdown("""
+            <div style='background:#111827; border:1px solid #1F2937; border-radius:6px; padding:10px 15px; margin-top:15px; margin-bottom:10px;'>
+                <span style='font-size:1.1rem;'>🔥</span> <b>Public Reddit Communities</b>
+                <div style='font-size:0.75rem; color:#9CA3AF; margin-top:2px;'>Scan r/IsThisAScamIndia, r/cybercrime etc. for real victim narratives.</div>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("🔥 Run Reddit Victim Scraper", use_container_width=True, key="trigger_reddit_btn", disabled=not api_online):
+            with st.spinner("Connecting to Reddit APIs & pulling victim posts..."):
+                try:
+                    res = requests.post(f"{API_BASE_URL}/api/v1/collect/reddit")
+                    if res.status_code == 200:
+                        count = res.json().get("new_raw_records_collected", 0)
+                        st.success(f"Success! Reddit Scraper complete. Ingested {count} new social media posts.")
                         time.sleep(1.5)
                         st.rerun()
                     else:

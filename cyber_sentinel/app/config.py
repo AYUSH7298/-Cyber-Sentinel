@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     TELEGRAM_SESSION_NAME: str = "cyber_sentinel_session"
 
     # Public Telegram channels to monitor (comma-separated usernames)
-    TELEGRAM_CHANNELS: str = "cybercrimealerts_india,taskscams,fraud_alerts_news"
+    TELEGRAM_CHANNELS: str = "cybercrimealerts_india,taskscams,fraud_alerts_news,cyberdost,indiancert,police_alerts,cyber_fraud_alerts_india,scam_alert_india"
 
     # --- AI / ML Thresholds ---
     CAMPAIGN_SIMILARITY_THRESHOLD: float = 0.85
@@ -33,7 +33,20 @@ class Settings(BaseSettings):
     RSS_FEED_URLS: str = (
         "https://www.cert-in.org.in/rss.xml,"
         "https://www.cisa.gov/cybersecurity-advisories/all.xml,"
-        "https://feeds.feedburner.com/TheHackersNews"
+        "https://feeds.feedburner.com/TheHackersNews,"
+        "https://news.google.com/rss/search?q=cybercrime+india&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=online+scam+india&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=upi+fraud+india&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+mumbai&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+delhi&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+bangalore&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+chennai&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+kolkata&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+hyderabad&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+pune&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+ahmedabad&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+jaipur&hl=en-IN&gl=IN&ceid=IN:en,"
+        "https://news.google.com/rss/search?q=cybercrime+lucknow&hl=en-IN&gl=IN&ceid=IN:en"
     )
 
     # --- Scheduler ---

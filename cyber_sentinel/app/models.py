@@ -40,6 +40,11 @@ class ScamArtifact(Base):
     confidence_score = Column(Float, default=0.0)         # AI classifier confidence (0-1)
     keywords = Column(Text, nullable=False, default="")   # Comma-separated list
     extracted_urls = Column(Text, nullable=True)           # Comma-separated list
+    extracted_emails = Column(Text, nullable=True)
+    extracted_apks = Column(Text, nullable=True)
+    extracted_handles = Column(Text, nullable=True)
+    bank_references = Column(Text, nullable=True)
+    wallet_addresses = Column(Text, nullable=True)
     platform = Column(String(64), nullable=False)
 
     # --- Geographic Intelligence ---

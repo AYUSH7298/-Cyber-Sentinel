@@ -3,13 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app import models, database
-from app.collectors.news_scraper import RSSCollector
+from app.collectors.social_scraper import SocialScraper
+from app.collectors.malware_scraper import MalwareScraper
+from app.collectors.portal_scraper import PortalScraper
 from app.collectors.telegram_osint import TelegramCollector
 from app.ai.pipeline import AnalyticsPipeline
 from app.config import settings
 import asyncio
 import logging
 import os
+from contextlib import asynccontextmanager
 
 # ─── Logging Setup ────────────────────────────────────────────
 logging.basicConfig(
@@ -19,12 +22,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ─── Application Factory ──────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Launch the background OSINT scheduler on application start."""
+    logger.info("[Startup] Cyber Sentinel v%s initializing...", settings.VERSION)
+    task = asyncio.create_task(_schedule_osint_pull())
+    logger.info("[Startup] Background OSINT scheduler started (interval=%ds).", settings.OSINT_POLL_INTERVAL_SECONDS)
+    yield
+    task.cancel()
+
 app = FastAPI(
     title="Cyber Sentinel Core Engine",
     description="AI-Powered Fraud Campaign Intelligence & Early Warning System",
     version=settings.VERSION,
     docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
+    lifespan=lifespan,
 )
 
 # CORS — restrict in production to your dashboard origin
@@ -66,6 +79,18 @@ def run_migrations():
                 cursor.execute("ALTER TABLE scam_artifacts ADD COLUMN geo_references TEXT;")
                 logger.info("[Migration] Added 'geo_references' column to scam_artifacts.")
 
+            if "extracted_emails" not in columns:
+                cursor.execute("ALTER TABLE scam_artifacts ADD COLUMN extracted_emails TEXT;")
+            if "extracted_apks" not in columns:
+                cursor.execute("ALTER TABLE scam_artifacts ADD COLUMN extracted_apks TEXT;")
+            if "extracted_handles" not in columns:
+                cursor.execute("ALTER TABLE scam_artifacts ADD COLUMN extracted_handles TEXT;")
+            if "bank_references" not in columns:
+                cursor.execute("ALTER TABLE scam_artifacts ADD COLUMN bank_references TEXT;")
+            if "wallet_addresses" not in columns:
+                cursor.execute("ALTER TABLE scam_artifacts ADD COLUMN wallet_addresses TEXT;")
+                logger.info("[Migration] Added new DNA entity columns to scam_artifacts.")
+
         conn.commit()
         conn.close()
     except Exception as exc:
@@ -78,7 +103,9 @@ models.Base.metadata.create_all(bind=database.engine)
 
 # Singleton instances (initialized once at startup)
 pipeline_worker = AnalyticsPipeline()
-rss_collector = RSSCollector()
+social_scraper = SocialScraper()
+malware_scraper = MalwareScraper()
+portal_scraper = PortalScraper()
 telegram_collector = TelegramCollector()
 
 
@@ -98,6 +125,7 @@ def _process_unanalyzed(db: Session, background_tasks: BackgroundTasks):
     unprocessed = (
         db.query(models.RawIntel)
         .filter(~models.RawIntel.id.in_(analyzed_ids))
+        .limit(10)
         .all()
     )
     for item in unprocessed:
@@ -140,13 +168,13 @@ def manual_ingestion(
 
 
 # ─── Collection Triggers ──────────────────────────────────────
-@app.post("/api/v1/collect/rss", tags=["Collectors"])
-def trigger_rss_pull(
+@app.post("/api/v1/collect/social", tags=["Collectors"])
+def trigger_social_pull(
     background_tasks: BackgroundTasks,
     db: Session = Depends(database.get_db),
 ):
-    """Trigger an RSS feed collection run and queue analysis of new records."""
-    new_records = rss_collector.fetch_latest_alerts(db)
+    """Trigger collection from Social Media (YouTube, Insta, FB, X)."""
+    new_records = social_scraper.fetch_latest_intel(db)
     queued = _process_unanalyzed(db, background_tasks)
     return {
         "status": "success",
@@ -154,6 +182,33 @@ def trigger_rss_pull(
         "queued_for_analysis": queued,
     }
 
+@app.post("/api/v1/collect/malware", tags=["Collectors"])
+def trigger_malware_pull(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(database.get_db),
+):
+    """Trigger collection from APK Dist sources and Phishing Domains."""
+    new_records = malware_scraper.fetch_latest_intel(db)
+    queued = _process_unanalyzed(db, background_tasks)
+    return {
+        "status": "success",
+        "new_raw_records_collected": new_records,
+        "queued_for_analysis": queued,
+    }
+
+@app.post("/api/v1/collect/portal", tags=["Collectors"])
+def trigger_portal_pull(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(database.get_db),
+):
+    """Trigger collection from Scam Reporting Portals."""
+    new_records = portal_scraper.fetch_latest_intel(db)
+    queued = _process_unanalyzed(db, background_tasks)
+    return {
+        "status": "success",
+        "new_raw_records_collected": new_records,
+        "queued_for_analysis": queued,
+    }
 
 @app.post("/api/v1/collect/telegram", tags=["Collectors"])
 async def trigger_telegram_pull(
@@ -215,6 +270,11 @@ def get_dashboard_data(
             models.ScamArtifact.platform,
             models.ScamArtifact.keywords,
             models.ScamArtifact.geo_references,
+            models.ScamArtifact.extracted_emails,
+            models.ScamArtifact.extracted_apks,
+            models.ScamArtifact.extracted_handles,
+            models.ScamArtifact.bank_references,
+            models.ScamArtifact.wallet_addresses,
             models.RawIntel.raw_text,
             models.RawIntel.fetched_at,
         )
@@ -235,6 +295,11 @@ def get_dashboard_data(
             "platform": r.platform,
             "keywords": r.keywords or "",
             "geo": r.geo_references or "",
+            "emails": getattr(r, "extracted_emails", ""),
+            "apks": getattr(r, "extracted_apks", ""),
+            "handles": getattr(r, "extracted_handles", ""),
+            "bank_references": getattr(r, "bank_references", ""),
+            "wallet_addresses": getattr(r, "wallet_addresses", ""),
             "text": r.raw_text,
             "timestamp": r.fetched_at.strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -310,9 +375,11 @@ async def _schedule_osint_pull():
         logger.info("[Scheduler] Running automated OSINT fetch cycle...")
         try:
             db = database.SessionLocal()
-            rss_count = rss_collector.fetch_latest_alerts(db)
+            soc_count = social_scraper.fetch_latest_intel(db)
+            mal_count = malware_scraper.fetch_latest_intel(db)
+            port_count = portal_scraper.fetch_latest_intel(db)
             tg_count = await telegram_collector.fetch_latest_messages_async(db)
-            total = rss_count + tg_count
+            total = soc_count + mal_count + port_count + tg_count
 
             # Process all unanalyzed records synchronously in scheduler context
             analyzed_ids = db.query(models.ScamArtifact.raw_intel_id).subquery()
@@ -329,10 +396,3 @@ async def _schedule_osint_pull():
         except Exception as exc:
             logger.error("[Scheduler] Error in OSINT cycle: %s", exc)
 
-
-@app.on_event("startup")
-async def startup_event():
-    """Launch the background OSINT scheduler on application start."""
-    logger.info("[Startup] Cyber Sentinel v%s initializing...", settings.VERSION)
-    asyncio.create_task(_schedule_osint_pull())
-    logger.info("[Startup] Background OSINT scheduler started (interval=%ds).", settings.OSINT_POLL_INTERVAL_SECONDS)

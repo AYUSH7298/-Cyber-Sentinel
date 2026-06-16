@@ -6,16 +6,18 @@ logger = logging.getLogger(__name__)
 
 # Full expanded scam taxonomy for Indian cybercrime patterns
 SCAM_LABELS = [
-    "Job Scam",
-    "Loan Scam",
-    "Investment Scam",
     "UPI Fraud",
+    "Fake Trading App",
+    "Loan App Scam",
+    "Investment Scam",
+    "Job Scam",
+    "OTP Scam",
     "KYC Scam",
-    "Phishing",
-    "Sextortion",
+    "Fake Customer Care Scam",
     "Crypto Scam",
-    "Fake Government Scheme",
-    "Courier Parcel Scam",
+    "Phishing Campaign",
+    "Malware Distribution",
+    "APK Distribution Fraud",
     "Safe / Non-Scam",
 ]
 
@@ -52,16 +54,18 @@ class ScamClassifier:
     # Keyword fallback heuristics (works offline without model weights)
     # ------------------------------------------------------------------
     _KEYWORD_MAP = {
-        "Job Scam": ["part-time", "earn money", "work from home", "like task", "tmart", "youtube like"],
-        "Loan Scam": ["instant loan", "rupeespeedy", "loan approval", "200% interest", "recovery agent"],
-        "Investment Scam": ["stock tips", "pump and dump", "crypto profit", "guaranteed returns", "wealth advisory"],
-        "KYC Scam": ["kyc update", "kyc verification", "netbanking blocked", "account suspended", "update kyc"],
-        "Phishing": ["click here", "verify now", "login", "password reset", "account blocked"],
         "UPI Fraud": ["upi", "paytm", "phonepe", "gpay", "bhim", "transfer now"],
-        "Fake Government Scheme": ["pm yojana", "government grant", "subsidy", "customs officer", "irs refund"],
-        "Courier Parcel Scam": ["customs", "parcel held", "fedex", "dhl", "clearance fee", "mdma"],
-        "Sextortion": ["nude", "compromising", "video call", "blackmail", "screenshot", "morphed"],
+        "Fake Trading App": ["trading app", "forex", "option trading", "binary options", "trade signal"],
+        "Loan App Scam": ["instant loan", "rupeespeedy", "loan approval", "200% interest", "recovery agent"],
+        "Investment Scam": ["stock tips", "pump and dump", "guaranteed returns", "wealth advisory", "doubling money"],
+        "Job Scam": ["part-time", "earn money", "work from home", "like task", "tmart", "youtube like"],
+        "OTP Scam": ["share otp", "otp required", "secret code", "verification code"],
+        "KYC Scam": ["kyc update", "kyc verification", "netbanking blocked", "account suspended", "update kyc"],
+        "Fake Customer Care Scam": ["customer care", "helpline", "toll free", "support dial"],
         "Crypto Scam": ["bitcoin", "crypto", "wallet", "binance", "usdt", "blockchain bonus"],
+        "Phishing Campaign": ["click here", "verify now", "login", "password reset", "account blocked"],
+        "Malware Distribution": ["download file", "install certificate", "malicious update"],
+        "APK Distribution Fraud": ["download apk", "install app", "mod apk", "premium free apk"],
     }
 
     def _keyword_classify(self, text: str) -> tuple[str, float]:

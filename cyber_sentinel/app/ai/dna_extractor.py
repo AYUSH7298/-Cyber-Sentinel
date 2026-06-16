@@ -6,10 +6,14 @@ logger = logging.getLogger(__name__)
 
 # Geographic reference patterns for Indian cities/districts/states
 _GEO_PATTERNS = [
-    r"\b(gurugram|gurgaon|delhi|ncr|noida|faridabad|rohtak|panipat|hisar|karnal)\b",
-    r"\b(haryana|rajasthan|uttar pradesh|madhya pradesh|maharashtra|gujarat|punjab)\b",
-    r"\b(mumbai|bangalore|bengaluru|hyderabad|ahmedabad|kolkata|chennai|pune)\b",
-    r"\b(sector\s+\d+|phase\s+\d+|district|tehsil|block)\b",
+    # All Indian States & Union Territories
+    r"\b(andhra pradesh|arunachal pradesh|assam|bihar|chhattisgarh|goa|gujarat|haryana|himachal pradesh|jharkhand|karnataka|kerala|madhya pradesh|maharashtra|manipur|meghalaya|mizoram|nagaland|odisha|punjab|rajasthan|sikkim|tamil nadu|telangana|tripura|uttar pradesh|uttarakhand|west bengal)\b",
+    r"\b(andaman and nicobar|chandigarh|dadra and nagar haveli|daman and diu|delhi|ncr|lakshadweep|puducherry|jammu and kashmir|ladakh)\b",
+    # Top Tier-1 and Tier-2 Cities
+    r"\b(mumbai|bangalore|bengaluru|hyderabad|ahmedabad|kolkata|chennai|pune|gurugram|gurgaon|noida|faridabad|rohtak|panipat|hisar|karnal)\b",
+    r"\b(jaipur|surat|lucknow|kanpur|nagpur|indore|thane|bhopal|visakhapatnam|patna|vadodara|ghaziabad|ludhiana|agra|nashik|meerut|rajkot|varanasi|srinagar|aurangabad|dhanbad|amritsar|allahabad|ranchi|howrah|coimbatore|jabalpur|gwalior|vijayawada|jodhpur|madurai|raipur|kota|guwahati|chandigarh|solapur|hubballi|dharwad|bareilly|moradabad|mysore|aligarh|jalandhar|tiruchirappalli|bhubaneswar|salem|thiruvananthapuram|bhiwandi|saharanpur|gorakhpur|guntur|bikaner|amravati|jamshedpur|bhilai|cuttack|firozabad|kochi|nellore|bhavnagar|dehradun|durgapur|asansol|rourkela|nanded|kolhapur|ajmer|akola|gulbarga|jamnagar|ujjain|siliguri|jhansi|mangalore|erode|belgaum|kurnool|rajahmundry|tirunelveli|malegaon|gaya|udaipur|kakinada|kozhikode|bellary|patiala|agartala|bhagalpur|muzaffarnagar|latur|dhule|korba|bhilwara|berhampur|muzaffarpur|ahmednagar|mathura|kollam|kadapa|bilaspur|shahjahanpur|satara|bijapur|rampur|shivamogga|chandrapur|junagadh|thrissur|alwar|bardhaman|nizamabad|parbhani|tumkur|khammam|panipat|darbhanga|aizawl|dewas|ichalkaranji|karnal|bathinda|jalna|eluru|purnia|satna|mau|sonipat|farrukhabad|sagar|durg|imphal|ratlam|hapur|arrah|anantapur|karimnagar|etawah|bharatpur|begusarai|gandhidham|sikar|thoothukudi|rewa|mirzapur|raichur|pali|ramagundam|silchar|haridwar|nagercoil|sri ganganagar|mango|thanjavur|bulandshahr|uluberia|katni|sambhal|singrauli|nadiad|secunderabad|yamunanagar|bidar|munger|panchkula|burhanpur|kharagpur|dindigul|gandhinagar|hospet|malda|ongole|deoghar|chapra|haldia|khandwa|nandyal|morena|amroha|anand|bhind|bhiwani|berhampore|ambala|morbi|fatehpur|raebareli|bhusawal|orai|bahraich|vellore|mahesana|raiganj|sirsa|danapur|serampore|guna|jaunpur|panvel|shivpuri|unnao|chinsurah|alappuzha|kottayam|machilipatnam|shimla|adoni|udupi|katihar|proddatur|mahbubnagar|saharsa|dibrugarh|jorhat|hazaribagh|hindupur|nagaon|sasaram|hajipur)\b",
+    # Specific geographical subdivisions
+    r"\b(sector\s+\d+|phase\s+\d+|district|tehsil|block|ward\s+\d+|taluka|mandal)\b",
 ]
 
 _GEO_REGEX = re.compile("|".join(_GEO_PATTERNS), re.IGNORECASE)
@@ -45,6 +49,11 @@ class DNAExtractor:
         self.upi_pattern = re.compile(
             r"[\w.\-]+@(?:okicici|okhdfcbank|okaxis|oksbi|ybl|paytm|upi|icici|sbi|axisbank|hdfc)"
         )
+        self.email_pattern = re.compile(r"[\w\.-]+@[\w\.-]+\.\w+")
+        self.apk_pattern = re.compile(r"com\.[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+")
+        self.handle_pattern = re.compile(r"(?:@|t\.me/|instagram\.com/|twitter\.com/)([a-zA-Z0-9_]+)")
+        self.wallet_pattern = re.compile(r"\b(?:[13][a-km-zA-HJ-NP-Z1-9]{25,34}|0x[a-fA-F0-9]{40}|T[A-Za-z1-9]{33})\b")
+        self.bank_pattern = re.compile(r"\b(sbi|hdfc|icici|axis|pnb|bob|kotak|indusind|yes bank|idfc)\b", re.IGNORECASE)
 
         # High-risk threat indicator keywords
         self.risk_keywords = [
@@ -121,6 +130,12 @@ class DNAExtractor:
         geo_refs = self._extract_geo(text)
         psych_triggers = self._extract_psych_triggers(text)
         payment_indicators = self._extract_payment_indicators(text)
+        
+        emails = list(set(self.email_pattern.findall(text)))
+        apks = list(set(self.apk_pattern.findall(text)))
+        handles = list(set(self.handle_pattern.findall(text)))
+        wallets = list(set(self.wallet_pattern.findall(text)))
+        banks = list(set(m.upper() for m in self.bank_pattern.findall(text)))
 
         return {
             "urls": filtered_urls,
@@ -129,6 +144,11 @@ class DNAExtractor:
             "geo_references": geo_refs,
             "psychological_triggers": psych_triggers,
             "payment_indicators": payment_indicators,
+            "emails": emails,
+            "apks": apks,
+            "handles": handles,
+            "wallets": wallets,
+            "banks": banks,
         }
 
     def compute_risk(
@@ -154,15 +174,17 @@ class DNAExtractor:
         Returns float in [0, 100].
         """
         severity_map = {
-            "Phishing": 1.0,
+            "Phishing Campaign": 1.0,
             "KYC Scam": 1.0,
-            "Sextortion": 1.0,
-            "Courier Parcel Scam": 0.9,
-            "Fake Government Scheme": 0.9,
+            "OTP Scam": 1.0,
+            "Fake Customer Care Scam": 0.95,
+            "Malware Distribution": 0.95,
+            "APK Distribution Fraud": 0.95,
             "Investment Scam": 0.85,
             "Crypto Scam": 0.85,
+            "Fake Trading App": 0.85,
             "UPI Fraud": 0.80,
-            "Loan Scam": 0.70,
+            "Loan App Scam": 0.70,
             "Job Scam": 0.65,
         }
 

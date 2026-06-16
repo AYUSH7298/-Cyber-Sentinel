@@ -28,7 +28,7 @@ class TelegramCollector:
         self.api_hash = settings.TELEGRAM_API_HASH
         self.session_name = settings.TELEGRAM_SESSION_NAME
         self.channels = settings.telegram_channels_list
-        self.messages_per_channel = 15   # Increased from 10 for better coverage
+        self.messages_per_channel = 1500   # Scaled to pull ~15k records total across channels
 
     async def fetch_latest_messages_async(self, db: Session) -> int:
         """

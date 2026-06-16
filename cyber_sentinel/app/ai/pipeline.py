@@ -92,6 +92,11 @@ class AnalyticsPipeline:
             extracted_urls=",".join(dna["urls"]),
             platform=raw_record.source,
             geo_references=",".join(dna["geo_references"]),
+            extracted_emails=",".join(dna.get("emails", [])),
+            extracted_apks=",".join(dna.get("apks", [])),
+            extracted_handles=",".join(dna.get("handles", [])),
+            wallet_addresses=",".join(dna.get("wallets", [])),
+            bank_references=",".join(dna.get("banks", [])),
             risk_score=risk if is_suspicious else 0.0,
             status="New" if is_suspicious else "Clean",
         )
@@ -113,21 +118,52 @@ class AnalyticsPipeline:
             db.add(threat_log)
             db.commit()
 
-            logger.info(
-                "[Pipeline] Processed id=%s → %s | risk=%.1f | campaign=%s | verdict=%s",
-                raw_intel_id, scam_type, risk, assigned_campaign, verdict,
-            )
+            recommended_action = _compute_recommended_action(scam_type, risk)
+            entities_found = [
+                f for f in [
+                    f"Phones: {','.join(dna['phone_numbers'])}" if dna["phone_numbers"] else "",
+                    f"URLs: {','.join(dna['urls'])}" if dna["urls"] else "",
+                    f"UPIs/Payments: {','.join(dna['payment_indicators'])}" if dna["payment_indicators"] else "",
+                    f"Emails: {','.join(dna.get('emails', []))}" if dna.get("emails") else "",
+                    f"APKs: {','.join(dna.get('apks', []))}" if dna.get("apks") else "",
+                    f"Handles: {','.join(dna.get('handles', []))}" if dna.get("handles") else "",
+                    f"Wallets: {','.join(dna.get('wallets', []))}" if dna.get("wallets") else "",
+                    f"Banks: {','.join(dna.get('banks', []))}" if dna.get("banks") else "",
+                ] if f
+            ]
+
+            log_output = f"""
+Threat Type: {scam_type}
+Confidence: {confidence:.2f}
+Location: {",".join(dna["geo_references"]) if dna["geo_references"] else "Unknown"}
+Entities Found: {" | ".join(entities_found) if entities_found else "None"}
+Associated Campaign: {assigned_campaign if assigned_campaign else "Unclustered"}
+Evidence Sources: {raw_record.source}
+Risk Level: {verdict}
+Recommended Action: {recommended_action}
+"""
+            logger.info("\nOUTPUT FORMAT FOR EVERY DETECTED THREAT:\n%s", log_output.strip())
 
         return artifact
 
 
 def _compute_verdict(risk_score: float) -> str:
     """Map numeric risk score to human-readable verdict string."""
-    if risk_score >= 75.0:
-        return "Highly Critical"
-    elif risk_score >= 50.0:
-        return "Suspicious (High Risk)"
-    elif risk_score >= 25.0:
-        return "Suspicious (Medium Risk)"
+    if risk_score >= 80.0:
+        return "Critical"
+    elif risk_score >= 60.0:
+        return "High"
+    elif risk_score >= 40.0:
+        return "Medium"
     else:
-        return "Suspicious (Low Risk)"
+        return "Low"
+
+def _compute_recommended_action(scam_type: str, risk_score: float) -> str:
+    if risk_score >= 80.0:
+        return f"Immediate takedown of {scam_type} infrastructure, issue public advisory, alert Nodal Officer."
+    elif risk_score >= 60.0:
+        return f"Block associated UPI/domains, monitor {scam_type} campaign spread."
+    elif risk_score >= 40.0:
+        return "Investigate entities, add to watch-list."
+    else:
+        return "Log for intelligence gathering."
