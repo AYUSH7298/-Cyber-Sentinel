@@ -21,8 +21,7 @@ except ImportError:
     TelegramClient = None  # type: ignore[assignment,misc]
     logger.warning(
         "[Telethon] telethon library not installed. "
-        "Telegram collection will be disabled. Install with: pip install telethon"
-    )
+        "Telegram collection will be disabled. Install with: pip install telethon")
 
 
 class TelegramCollector:
@@ -39,7 +38,8 @@ class TelegramCollector:
         self.api_hash = settings.TELEGRAM_API_HASH
         self.session_name = settings.TELEGRAM_SESSION_NAME
         self.channels = settings.telegram_channels_list
-        self.messages_per_channel = 1500   # Scaled to pull ~15k records total across channels
+        # Scaled to pull ~15k records total across channels
+        self.messages_per_channel = 1500
 
     async def fetch_latest_messages_async(self, db: Session) -> int:
         """
@@ -48,14 +48,14 @@ class TelegramCollector:
         Returns the count of newly ingested messages.
         """
         if not _TELETHON_AVAILABLE:
-            logger.warning("[Telethon] telethon not installed. Skipping Telegram collection.")
+            logger.warning(
+                "[Telethon] telethon not installed. Skipping Telegram collection.")
             return 0
 
         if not settings.is_telegram_configured:
             logger.warning(
                 "[Telethon] Credentials not configured (TG_API_ID / TG_API_HASH). "
-                "Set them in .env to enable live Telegram collection."
-            )
+                "Set them in .env to enable live Telegram collection.")
             return 0
 
         total_count = 0
@@ -80,12 +80,17 @@ class TelegramCollector:
                 await asyncio.sleep(1)
 
             db.commit()
-            logger.info("[Telethon] Total new messages ingested: %d", total_count)
+            logger.info(
+                "[Telethon] Total new messages ingested: %d",
+                total_count)
 
         except FloodWaitError as exc:
-            logger.warning("[Telethon] Rate limited. Retry after %d seconds.", exc.seconds)
+            logger.warning(
+                "[Telethon] Rate limited. Retry after %d seconds.",
+                exc.seconds)
         except SessionPasswordNeededError:
-            logger.error("[Telethon] 2FA is enabled. Please add your password to the session.")
+            logger.error(
+                "[Telethon] 2FA is enabled. Please add your password to the session.")
         except Exception as exc:
             logger.error("[Telethon] Unexpected error: %s", exc)
         finally:
@@ -110,7 +115,8 @@ class TelegramCollector:
                     continue
 
                 # O(1) dedup via SHA-256 content_hash index
-                content_hash = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+                content_hash = hashlib.sha256(text.encode(
+                    "utf-8", errors="replace")).hexdigest()
                 exists = (
                     db.query(models.RawIntel)
                     .filter(models.RawIntel.content_hash == content_hash)
@@ -127,14 +133,22 @@ class TelegramCollector:
                     ))
                     count += 1
 
-            logger.info("[Telethon] Channel @%s → %d new messages", channel_username, count)
+            logger.info(
+                "[Telethon] Channel @%s → %d new messages",
+                channel_username,
+                count)
 
         except ChannelPrivateError:
-            logger.warning("[Telethon] @%s is private. Skipping.", channel_username)
+            logger.warning(
+                "[Telethon] @%s is private. Skipping.",
+                channel_username)
         except UsernameNotOccupiedError:
             logger.warning("[Telethon] @%s does not exist.", channel_username)
         except FloodWaitError as exc:
-            logger.warning("[Telethon] Flood wait on @%s: %ds", channel_username, exc.seconds)
+            logger.warning(
+                "[Telethon] Flood wait on @%s: %ds",
+                channel_username,
+                exc.seconds)
         except Exception as exc:
             logger.error("[Telethon] Error on @%s: %s", channel_username, exc)
 

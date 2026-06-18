@@ -87,7 +87,8 @@ class PortalScraper:
         Returns count of newly added records.
         """
         if not _AVAILABLE:
-            logger.error("[PortalScraper] feedparser or requests not installed.")
+            logger.error(
+                "[PortalScraper] feedparser or requests not installed.")
             return 0
 
         total = 0
@@ -100,7 +101,12 @@ class PortalScraper:
 
                 for entry in feed.entries:
                     title = entry.get("title", "").strip()
-                    summary = _strip_html(entry.get("summary", entry.get("description", ""))).strip()
+                    summary = _strip_html(
+                        entry.get(
+                            "summary",
+                            entry.get(
+                                "description",
+                                ""))).strip()
                     link = entry.get("link", "")
 
                     intel_text = f"[{source_label}] {title}. {summary}" if summary else f"[{source_label}] {title}"
@@ -131,7 +137,11 @@ class PortalScraper:
                 logger.info("[PortalScraper] %s: processed.", source_label)
 
             except Exception as exc:
-                logger.error("[PortalScraper] Error on feed '%s' (%s): %s", source_label, feed_url, exc)
+                logger.error(
+                    "[PortalScraper] Error on feed '%s' (%s): %s",
+                    source_label,
+                    feed_url,
+                    exc)
                 try:
                     db.rollback()
                 except Exception:

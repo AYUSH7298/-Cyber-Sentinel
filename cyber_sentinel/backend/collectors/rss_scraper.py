@@ -24,7 +24,14 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # News articles with only these words in title are skipped as non-threat noise
-_NOISE_TITLE_WORDS = {"election", "sports", "cricket", "bollywood", "recipe", "fashion", "weather"}
+_NOISE_TITLE_WORDS = {
+    "election",
+    "sports",
+    "cricket",
+    "bollywood",
+    "recipe",
+    "fashion",
+    "weather"}
 
 # Known safe article sources — their content is reference, not threat
 _SAFE_SOURCES = {
@@ -51,7 +58,10 @@ class RSSCollector:
     @staticmethod
     def _compute_hash(text: str) -> str:
         """Generate SHA-256 content fingerprint for deduplication."""
-        return hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+        return hashlib.sha256(
+            text.encode(
+                "utf-8",
+                errors="replace")).hexdigest()
 
     @staticmethod
     def _build_intel_text(entry: dict) -> str:
@@ -74,10 +84,32 @@ class RSSCollector:
             return True
         text_lower = text.lower()
         cyber_keywords = [
-            "scam", "fraud", "cyber", "phish", "hack", "malware", "ransomware",
-            "upi", "kyc", "otp", "fake", "cheat", "swindle", "arrest", "police",
-            "victim", "complaint", "blocked", "suspended", "stolen", "loan app",
-            "trading app", "investment", "cryptocurrency", "apk", "alert",
+            "scam",
+            "fraud",
+            "cyber",
+            "phish",
+            "hack",
+            "malware",
+            "ransomware",
+            "upi",
+            "kyc",
+            "otp",
+            "fake",
+            "cheat",
+            "swindle",
+            "arrest",
+            "police",
+            "victim",
+            "complaint",
+            "blocked",
+            "suspended",
+            "stolen",
+            "loan app",
+            "trading app",
+            "investment",
+            "cryptocurrency",
+            "apk",
+            "alert",
         ]
         return not any(kw in text_lower for kw in cyber_keywords)
 
@@ -91,13 +123,11 @@ class RSSCollector:
         Returns count of newly added records.
         """
         if not _FEEDPARSER_AVAILABLE:
-            logger.error("[RSSCollector] feedparser not installed. Run: pip install feedparser")
+            logger.error(
+                "[RSSCollector] feedparser not installed. Run: pip install feedparser")
             return 0
 
         total_added = 0
-        headers = {
-            "User-Agent": "CyberSentinelBot/3.0 (Public OSINT Research; contact: cybersentinel@research.in)"
-        }
 
         for feed_url in self.feed_urls:
             try:
@@ -107,7 +137,8 @@ class RSSCollector:
                 )
 
                 if feed.bozo and not feed.entries:
-                    logger.debug("[RSSCollector] Failed to parse feed: %s", feed_url)
+                    logger.debug(
+                        "[RSSCollector] Failed to parse feed: %s", feed_url)
                     continue
 
                 for entry in feed.entries:
@@ -141,11 +172,16 @@ class RSSCollector:
                 time.sleep(self._delay_between_feeds)
 
             except Exception as exc:
-                logger.error("[RSSCollector] Error parsing feed '%s': %s", feed_url, exc)
+                logger.error(
+                    "[RSSCollector] Error parsing feed '%s': %s",
+                    feed_url,
+                    exc)
                 try:
                     db.rollback()
                 except Exception:
                     pass
 
-        logger.info("[RSSCollector] Complete. New records ingested: %d", total_added)
+        logger.info(
+            "[RSSCollector] Complete. New records ingested: %d",
+            total_added)
         return total_added

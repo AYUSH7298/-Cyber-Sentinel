@@ -55,20 +55,21 @@ class CampaignClusterer:
 
     def __init__(self):
         self._model: SentenceTransformer | None = None
-        self._cache = _LRUEmbeddingCache(max_size=settings.EMBEDDING_CACHE_SIZE)
+        self._cache = _LRUEmbeddingCache(
+            max_size=settings.EMBEDDING_CACHE_SIZE)
         self._load_model()
 
     def _load_model(self):
         """Lazy-load embedding model with graceful fallback."""
         try:
             self._model = SentenceTransformer(self.MODEL_NAME)
-            logger.info("[CampaignClusterer] Sentence-transformer loaded: %s", self.MODEL_NAME)
+            logger.info(
+                "[CampaignClusterer] Sentence-transformer loaded: %s",
+                self.MODEL_NAME)
         except Exception as exc:
             logger.warning(
                 "[CampaignClusterer] Could not load sentence-transformer (%s). "
-                "Falling back to keyword-based clustering.",
-                exc,
-            )
+                "Falling back to keyword-based clustering.", exc, )
             self._model = None
 
     # ------------------------------------------------------------------
@@ -150,7 +151,8 @@ class CampaignClusterer:
             try:
                 new_emb = self._get_embedding(new_text)
                 if new_emb is None:
-                    return self._keyword_cluster(new_text, existing_artifacts, threshold)
+                    return self._keyword_cluster(
+                        new_text, existing_artifacts, threshold)
 
                 # Batch-encode all uncached history texts
                 uncached_indices = []
@@ -166,15 +168,19 @@ class CampaignClusterer:
 
                 # Batch-encode uncached texts in one model pass
                 if uncached_indices:
-                    uncached_texts = [existing_artifacts[i]["text"][:512] for i in uncached_indices]
+                    uncached_texts = [existing_artifacts[i]
+                                      ["text"][:512] for i in uncached_indices]
                     try:
-                        batch_embs = self._model.encode(uncached_texts, convert_to_tensor=True)
+                        batch_embs = self._model.encode(
+                            uncached_texts, convert_to_tensor=True)
                         for j, idx in enumerate(uncached_indices):
                             emb = batch_embs[j]
                             hist_embs_list[idx] = emb
-                            self._cache.set(existing_artifacts[idx]["text"][:512], emb)
+                            self._cache.set(
+                                existing_artifacts[idx]["text"][:512], emb)
                     except Exception as exc:
-                        logger.error("[CampaignClusterer] Batch encode error: %s", exc)
+                        logger.error(
+                            "[CampaignClusterer] Batch encode error: %s", exc)
 
                 # Filter out None embeddings
                 valid_pairs = [
@@ -184,7 +190,8 @@ class CampaignClusterer:
                 ]
 
                 if not valid_pairs:
-                    return self._keyword_cluster(new_text, existing_artifacts, threshold)
+                    return self._keyword_cluster(
+                        new_text, existing_artifacts, threshold)
 
                 valid_embs = [p[0] for p in valid_pairs]
                 valid_artifacts = [p[1] for p in valid_pairs]
@@ -194,7 +201,6 @@ class CampaignClusterer:
                 cos_scores = util.cos_sim(new_emb, hist_tensor)[0]
 
                 best_score = -1.0
-                best_cid = None
                 best_idx = -1
 
                 for i, score in enumerate(cos_scores):
@@ -202,7 +208,8 @@ class CampaignClusterer:
                     artifact = valid_artifacts[i]
                     existing_type = artifact.get("scam_type", "")
 
-                    # Type-agreement bonus: same scam type lowers threshold by 15%
+                    # Type-agreement bonus: same scam type lowers threshold by
+                    # 15%
                     effective_threshold = (
                         threshold * 0.85
                         if (new_scam_type and existing_type == new_scam_type)
@@ -213,7 +220,8 @@ class CampaignClusterer:
                         best_score = s
                         best_idx = i
 
-                # Check if best match exceeds threshold (with possible type boost)
+                # Check if best match exceeds threshold (with possible type
+                # boost)
                 if best_idx >= 0:
                     best_artifact = valid_artifacts[best_idx]
                     existing_type = best_artifact.get("scam_type", "")
@@ -227,17 +235,23 @@ class CampaignClusterer:
                         matched_cid = best_artifact["campaign_id"]
                         logger.debug(
                             "[CampaignClusterer] Matched %s (score=%.3f, threshold=%.3f)",
-                            matched_cid, best_score, effective_threshold,
+                            matched_cid,
+                            best_score,
+                            effective_threshold,
                         )
                         return matched_cid, round(best_score, 3)
 
                 # New cluster
                 new_cid = self._next_campaign_id(existing_artifacts)
-                logger.debug("[CampaignClusterer] New campaign: %s (best_score=%.3f)", new_cid, best_score)
+                logger.debug(
+                    "[CampaignClusterer] New campaign: %s (best_score=%.3f)",
+                    new_cid,
+                    best_score)
                 return new_cid, round(best_score, 3)
 
             except Exception as exc:
-                logger.error("[CampaignClusterer] Clustering error: %s. Using fallback.", exc)
+                logger.error(
+                    "[CampaignClusterer] Clustering error: %s. Using fallback.", exc)
 
         # --- Keyword fallback clustering ---
         return self._keyword_cluster(new_text, existing_artifacts, threshold)

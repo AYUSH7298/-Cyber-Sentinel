@@ -1,4 +1,3 @@
-import os
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 
@@ -26,13 +25,13 @@ class Settings(BaseSettings):
     TELEGRAM_CHANNELS: str = (
         "cybercrimealerts_india,taskscams,fraud_alerts_news,cyberdost,indiancert,"
         "police_alerts,cyber_fraud_alerts_india,scam_alert_india,"
-        "ncib_official,cybercrime_india_news,indiacybercops"
-    )
+        "ncib_official,cybercrime_india_news,indiacybercops")
 
     # --- AI / ML Thresholds ---
     CAMPAIGN_SIMILARITY_THRESHOLD: float = 0.80   # Lowered for better clustering
     CLASSIFIER_CONFIDENCE_THRESHOLD: float = 0.40  # Lowered to catch more threats
-    EMBEDDING_CACHE_SIZE: int = 1000               # Max cached embeddings in clusterer
+    # Max cached embeddings in clusterer
+    EMBEDDING_CACHE_SIZE: int = 1000
 
     # --- RSS Feed URLs (comma-separated) — covers all 28 states + 8 UTs ---
     RSS_FEED_URLS: str = (
@@ -144,15 +143,18 @@ class Settings(BaseSettings):
 
     @property
     def telegram_channels_list(self) -> list[str]:
-        return [ch.strip() for ch in self.TELEGRAM_CHANNELS.split(",") if ch.strip()]
+        return [ch.strip()
+                for ch in self.TELEGRAM_CHANNELS.split(",") if ch.strip()]
 
     @property
     def rss_feed_urls_list(self) -> list[str]:
-        return [url.strip() for url in self.RSS_FEED_URLS.split(",") if url.strip()]
+        return [url.strip()
+                for url in self.RSS_FEED_URLS.split(",") if url.strip()]
 
     @property
     def reddit_subreddits_list(self) -> list[str]:
-        return [s.strip() for s in self.REDDIT_SUBREDDITS.split(",") if s.strip()]
+        return [s.strip()
+                for s in self.REDDIT_SUBREDDITS.split(",") if s.strip()]
 
     @property
     def is_telegram_configured(self) -> bool:
@@ -161,7 +163,10 @@ class Settings(BaseSettings):
             and self.TELEGRAM_API_ID != 123456
         )
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore"}
 
 
 settings = Settings()

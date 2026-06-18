@@ -16,15 +16,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# ─── All 36 Indian States + UTs ───────────────────────────────────────────────
+# ─── All 36 Indian States + UTs ─────────────────────────────────────────
 _STATES_PATTERN = (
     r"(?:andhra pradesh|arunachal pradesh|assam|bihar|chhattisgarh|goa|gujarat|"
     r"haryana|himachal pradesh|jharkhand|karnataka|kerala|madhya pradesh|maharashtra|"
     r"manipur|meghalaya|mizoram|nagaland|odisha|punjab|rajasthan|sikkim|tamil nadu|"
     r"telangana|tripura|uttar pradesh|uttarakhand|west bengal|"
     r"andaman and nicobar|chandigarh|dadra and nagar haveli|daman and diu|delhi|ncr|"
-    r"lakshadweep|puducherry|jammu and kashmir|ladakh|jammu|kashmir)"
-)
+    r"lakshadweep|puducherry|jammu and kashmir|ladakh|jammu|kashmir)")
 
 # ─── Top Indian cities + Tier-2 cities (comprehensive) ───────────────────────
 _CITIES_PATTERN = (
@@ -56,10 +55,9 @@ _CITIES_PATTERN = (
     r"bahraich|vellore|raiganj|sirsa|danapur|serampore|guna|jaunpur|panvel|"
     r"shivpuri|unnao|chinsurah|alappuzha|kottayam|machilipatnam|shimla|adoni|"
     r"udupi|katihar|proddatur|saharsa|dibrugarh|jorhat|hazaribagh|hindupur|"
-    r"nagaon|sasaram|hajipur|rohtak|palwal|jhajjar|nuh|mewat)"
-)
+    r"nagaon|sasaram|hajipur|rohtak|palwal|jhajjar|nuh|mewat)")
 
-# ─── Compiled geo regex ───────────────────────────────────────────────────────
+# ─── Compiled geo regex ─────────────────────────────────────────────────
 _GEO_REGEX = re.compile(
     r"\b(" + _STATES_PATTERN + "|" + _CITIES_PATTERN + r")\b",
     re.IGNORECASE
@@ -116,7 +114,7 @@ _CITY_TO_STATE: dict[str, str] = {
     "puducherry": "Puducherry",
 }
 
-# ─── Psychological trigger words (English + Hinglish) ─────────────────────────
+# ─── Psychological trigger words (English + Hinglish) ───────────────────
 _PSYCH_TRIGGERS = [
     # English
     "urgent", "limited time", "act now", "immediately", "last chance",
@@ -128,7 +126,7 @@ _PSYCH_TRIGGERS = [
     "last date", "abhi verify karo", "jaldi karo",
 ]
 
-# ─── Payment vector indicators ────────────────────────────────────────────────
+# ─── Payment vector indicators ──────────────────────────────────────────
 _PAYMENT_INDICATORS = [
     "upi", "paytm", "phonepe", "gpay", "bhim", "neft", "rtgs", "imps",
     "bitcoin", "usdt", "crypto", "wallet", "transfer", "deposit", "qr code",
@@ -160,11 +158,11 @@ class DNAExtractor:
         )
         self.upi_pattern = re.compile(
             r"[\w.\-]+@(?:okicici|okhdfcbank|okaxis|oksbi|ybl|paytm|upi|icici|sbi|"
-            r"axisbank|hdfc|kotak|ippb|idfcbank|freecharge|okhdfcbank)"
-        )
+            r"axisbank|hdfc|kotak|ippb|idfcbank|freecharge|okhdfcbank)")
         self.email_pattern = re.compile(r"[\w\.\-]+@[\w\.\-]+\.\w+")
         self.apk_pattern = re.compile(r"com\.[a-zA-Z0-9_]+\.[a-zA-Z0-9_.]+")
-        # Handles: @username, t.me/username, instagram.com/username, twitter.com/username
+        # Handles: @username, t.me/username, instagram.com/username,
+        # twitter.com/username
         self.handle_pattern = re.compile(
             r"(?:@|t\.me/|telegram\.me/|instagram\.com/|twitter\.com/|x\.com/)([a-zA-Z0-9_.]+)"
         )
@@ -184,7 +182,8 @@ class DNAExtractor:
         # Telegram t.me links
         self.tg_pattern = re.compile(r"t\.me/([a-zA-Z0-9_]+)")
         # Aadhaar: 12-digit number (with spaces/hyphens)
-        self.aadhaar_pattern = re.compile(r"\b[2-9]\d{3}[\s\-]?\d{4}[\s\-]?\d{4}\b")
+        self.aadhaar_pattern = re.compile(
+            r"\b[2-9]\d{3}[\s\-]?\d{4}[\s\-]?\d{4}\b")
         # PAN: 5 letters + 4 digits + 1 letter
         self.pan_pattern = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b")
         # IFSC Code: 4 letters + 0 + 6 chars
@@ -192,24 +191,68 @@ class DNAExtractor:
 
         # High-risk threat indicator keywords
         self.risk_keywords = [
-            "part-time", "earn money", "whatsapp", "telegram task", "deposit",
-            "crypto", "bonus", "kyc update", "suspend", "tmart", "gift card",
-            "customs", "parcel", "arrest", "fir", "police notice", "link aadhaar",
-            "sbi alert", "hdfc alert", "account blocked", "paytm kyc",
-            "work from home", "daily earning", "investment", "profit guaranteed",
-            "digital arrest", "ed officer", "cbi officer", "rbi officer",
-            "electricity bill", "bijli bill", "nude video", "blackmail",
-            "loan app", "recovery agent", "job offer",
+            "part-time",
+            "earn money",
+            "whatsapp",
+            "telegram task",
+            "deposit",
+            "crypto",
+            "bonus",
+            "kyc update",
+            "suspend",
+            "tmart",
+            "gift card",
+            "customs",
+            "parcel",
+            "arrest",
+            "fir",
+            "police notice",
+            "link aadhaar",
+            "sbi alert",
+            "hdfc alert",
+            "account blocked",
+            "paytm kyc",
+            "work from home",
+            "daily earning",
+            "investment",
+            "profit guaranteed",
+            "digital arrest",
+            "ed officer",
+            "cbi officer",
+            "rbi officer",
+            "electricity bill",
+            "bijli bill",
+            "nude video",
+            "blackmail",
+            "loan app",
+            "recovery agent",
+            "job offer",
         ]
 
         # Benign domains to exclude from threat URLs
         self.safe_domains = {
-            "google.com", "google.co.in", "wikipedia.org", "w3.org", "github.com",
-            "youtube.com", "apple.com", "microsoft.com", "linkedin.com",
-            "cert-in.org.in", "cisa.gov", "bleepingcomputer.com",
-            "indiatoday.in", "ndtv.com", "timesofindia.com",
-            "hindustantimes.com", "thehindu.com", "indianexpress.com",
-            "reddit.com", "twitter.com", "x.com", "facebook.com",
+            "google.com",
+            "google.co.in",
+            "wikipedia.org",
+            "w3.org",
+            "github.com",
+            "youtube.com",
+            "apple.com",
+            "microsoft.com",
+            "linkedin.com",
+            "cert-in.org.in",
+            "cisa.gov",
+            "bleepingcomputer.com",
+            "indiatoday.in",
+            "ndtv.com",
+            "timesofindia.com",
+            "hindustantimes.com",
+            "thehindu.com",
+            "indianexpress.com",
+            "reddit.com",
+            "twitter.com",
+            "x.com",
+            "facebook.com",
         }
 
     # ------------------------------------------------------------------
@@ -222,7 +265,8 @@ class DNAExtractor:
         for url in urls:
             try:
                 netloc = urlparse(url).netloc.lower().lstrip("www.")
-                if not any(netloc == sd or netloc.endswith("." + sd) for sd in self.safe_domains):
+                if not any(netloc == sd or netloc.endswith("." + sd)
+                           for sd in self.safe_domains):
                     result.append(url)
             except Exception:
                 result.append(url)
@@ -234,15 +278,19 @@ class DNAExtractor:
         for url in urls:
             try:
                 netloc = urlparse(url).netloc.lower().lstrip("www.")
-                if any(netloc == sd or netloc.endswith("." + sd) for sd in _SHORTENED_URL_DOMAINS):
+                if any(netloc == sd or netloc.endswith("." + sd)
+                       for sd in _SHORTENED_URL_DOMAINS):
                     shortened.append(url)
             except Exception:
                 pass
         return shortened
 
-    def _extract_geo(self, text: str) -> tuple[list[str], str | None, str | None]:
+    def _extract_geo(self,
+                     text: str) -> tuple[list[str],
+                                         str | None,
+                                         str | None]:
         """
-        Extract Indian geographic references. 
+        Extract Indian geographic references.
         Returns (geo_refs list, primary_state, primary_district).
         """
         matches = _GEO_REGEX.findall(text)

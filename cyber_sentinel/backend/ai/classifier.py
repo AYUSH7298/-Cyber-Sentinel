@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# ─── Expanded 18-category Indian cybercrime taxonomy ──────────────────────────
+# ─── Expanded 18-category Indian cybercrime taxonomy ────────────────────
 # Added: Sextortion, Fake Government Scheme, Courier/Parcel Scam,
 #        Electricity/Utility Scam, Bank Impersonation, Romance Scam,
 #        Digital Arrest Scam (new MHA-classified threat)
@@ -31,7 +31,7 @@ SCAM_LABELS = [
     "Safe / Non-Scam",
 ]
 
-# ─── Two-stage classification: fast keyword check → slow NLI model ────────────
+# ─── Two-stage classification: fast keyword check → slow NLI model ──────
 # The keyword map now includes Hinglish transliterations of common scam terms
 _KEYWORD_MAP: dict[str, list[str]] = {
     "UPI Fraud": [
@@ -154,7 +154,8 @@ class ScamClassifier:
                 model="typeform/distilbert-base-uncased-mnli",
                 device=-1,   # CPU; set to 0 for CUDA GPU
             )
-            logger.info("[ScamClassifier] Zero-shot model loaded successfully.")
+            logger.info(
+                "[ScamClassifier] Zero-shot model loaded successfully.")
         except Exception as exc:
             logger.warning(
                 "[ScamClassifier] Could not load transformer model (%s). "
@@ -197,7 +198,7 @@ class ScamClassifier:
         words = text.split()
         if len(words) <= chunk_size:
             return [text]
-        
+
         chunks = []
         overlap = 50
         step = chunk_size - overlap
@@ -221,9 +222,11 @@ class ScamClassifier:
             if len(chunk.split()) < 3:
                 continue
             try:
-                result = self._model(chunk, candidate_labels=self.candidate_labels)
+                result = self._model(
+                    chunk, candidate_labels=self.candidate_labels)
                 for label, score in zip(result["labels"], result["scores"]):
-                    label_score_sums[label] = label_score_sums.get(label, 0.0) + score
+                    label_score_sums[label] = label_score_sums.get(
+                        label, 0.0) + score
                 num_chunks += 1
             except Exception as exc:
                 logger.error("[ScamClassifier] Chunk inference error: %s", exc)
@@ -232,7 +235,10 @@ class ScamClassifier:
             return "Safe / Non-Scam", 0.0
 
         # Average scores across chunks
-        label_avg = {label: total / num_chunks for label, total in label_score_sums.items()}
+        label_avg = {
+            label: total / num_chunks
+            for label, total in label_score_sums.items()
+        }
         top_label = max(label_avg, key=label_avg.get)
         top_score = label_avg[top_label]
 
@@ -253,7 +259,8 @@ class ScamClassifier:
         words = [w for w in text.split() if w.strip()]
 
         # Bare URL with no context → not actionable
-        if len(words) == 1 and (words[0].startswith("http://") or words[0].startswith("https://")):
+        if len(words) == 1 and (words[0].startswith(
+                "http://") or words[0].startswith("https://")):
             return "Safe / Non-Scam", 0.0
 
         # Stage 1: Keyword classification
@@ -261,7 +268,10 @@ class ScamClassifier:
 
         # Fast path: high-confidence keyword match — skip expensive NLI
         if kw_label != "Safe / Non-Scam" and kw_conf >= 0.55:
-            logger.debug("[ScamClassifier] Fast path: %s (%.2f)", kw_label, kw_conf)
+            logger.debug(
+                "[ScamClassifier] Fast path: %s (%.2f)",
+                kw_label,
+                kw_conf)
             return kw_label, kw_conf
 
         # Very short text → only keyword classification is reliable
@@ -273,9 +283,11 @@ class ScamClassifier:
             try:
                 nli_label, nli_score = self._nli_classify(text)
 
-                # NLI returned below threshold → try blending with keyword result
+                # NLI returned below threshold → try blending with keyword
+                # result
                 if nli_score < settings.CLASSIFIER_CONFIDENCE_THRESHOLD:
-                    # If keyword found something, trust keyword over low-confidence NLI
+                    # If keyword found something, trust keyword over
+                    # low-confidence NLI
                     if kw_label != "Safe / Non-Scam" and kw_conf > 0.2:
                         return kw_label, kw_conf
                     return "Safe / Non-Scam", nli_score
@@ -283,7 +295,8 @@ class ScamClassifier:
                 return nli_label, nli_score
 
             except Exception as exc:
-                logger.error("[ScamClassifier] NLI stage error: %s. Using keyword result.", exc)
+                logger.error(
+                    "[ScamClassifier] NLI stage error: %s. Using keyword result.", exc)
 
         # Final fallback: keyword only
         return kw_label, kw_conf

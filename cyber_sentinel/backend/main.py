@@ -31,10 +31,12 @@ app.include_router(websockets.router)
 # 4. Initialize Hybrid AI Engine
 hybrid_ai = HybridPipeline()
 
+
 @app.get("/")
 @limiter.limit("5/minute")
 async def root(request: Request):
     return {"status": "Core Engine Online. API is protected."}
+
 
 @app.get("/api/v1/secure-intel", dependencies=[Depends(verify_token)])
 @limiter.limit("20/minute")
@@ -44,7 +46,9 @@ async def get_secure_intel(request: Request):
     """
     return {"message": "You are authenticated and viewing secure threat intelligence."}
 
-@app.post("/api/v1/admin/trigger-scrapers", dependencies=[Depends(require_admin_role)])
+
+@app.post("/api/v1/admin/trigger-scrapers",
+          dependencies=[Depends(require_admin_role)])
 @limiter.limit("1/minute")
 async def trigger_massive_ingestion(request: Request):
     """

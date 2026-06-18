@@ -67,16 +67,25 @@ class SocialScraper:
     def _fetch_subreddit(self, subreddit: str, db: Session) -> int:
         """Fetch recent posts from a single subreddit and store cyber-related ones."""
         added = 0
-        url = self._REDDIT_BASE.format(subreddit=subreddit, limit=self.post_limit)
+        url = self._REDDIT_BASE.format(
+            subreddit=subreddit, limit=self.post_limit)
 
         try:
-            resp = requests.get(url, headers=self._HEADERS, timeout=self._REQUEST_TIMEOUT)  # type: ignore[union-attr]
+            resp = requests.get(
+                url,
+                headers=self._HEADERS,
+                timeout=self._REQUEST_TIMEOUT)  # type: ignore[union-attr]
             if resp.status_code == 429:
-                logger.warning("[SocialScraper] Reddit rate limited on r/%s. Sleeping 30s.", subreddit)
+                logger.warning(
+                    "[SocialScraper] Reddit rate limited on r/%s. Sleeping 30s.",
+                    subreddit)
                 time.sleep(30)
                 return 0
             if resp.status_code != 200:
-                logger.warning("[SocialScraper] r/%s returned HTTP %d", subreddit, resp.status_code)
+                logger.warning(
+                    "[SocialScraper] r/%s returned HTTP %d",
+                    subreddit,
+                    resp.status_code)
                 return 0
 
             data = resp.json()
@@ -117,7 +126,10 @@ class SocialScraper:
                 added += 1
 
             db.commit()
-            logger.info("[SocialScraper] r/%s → %d new cyber-related posts", subreddit, added)
+            logger.info(
+                "[SocialScraper] r/%s → %d new cyber-related posts",
+                subreddit,
+                added)
 
         except Exception as exc:
             logger.error("[SocialScraper] Error on r/%s: %s", subreddit, exc)
@@ -142,5 +154,7 @@ class SocialScraper:
             total += self._fetch_subreddit(subreddit, db)
             time.sleep(self._DELAY_BETWEEN_SUBS)
 
-        logger.info("[SocialScraper] Total new social media intel: %d records", total)
+        logger.info(
+            "[SocialScraper] Total new social media intel: %d records",
+            total)
         return total

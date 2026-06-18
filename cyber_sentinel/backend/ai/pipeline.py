@@ -15,7 +15,6 @@ Full processing flow:
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from backend import models
 from .classifier import ScamClassifier
 from .dna_extractor import DNAExtractor
@@ -42,7 +41,10 @@ class AnalyticsPipeline:
         self.clusterer = CampaignClusterer()
         logger.info("[Pipeline] AnalyticsPipeline v2.0 initialized.")
 
-    def run_pipeline(self, raw_intel_id: int, db: Session) -> models.ScamArtifact | None:
+    def run_pipeline(
+            self,
+            raw_intel_id: int,
+            db: Session) -> models.ScamArtifact | None:
         """
         Execute the full AI processing pipeline on a single raw intel record.
         Returns the created ScamArtifact, or None if the record was not found.
@@ -54,7 +56,9 @@ class AnalyticsPipeline:
             .first()
         )
         if not raw_record:
-            logger.warning("[Pipeline] RawIntel id=%s not found. Skipping.", raw_intel_id)
+            logger.warning(
+                "[Pipeline] RawIntel id=%s not found. Skipping.",
+                raw_intel_id)
             return None
 
         # 2. Guard: skip if already processed
@@ -64,11 +68,14 @@ class AnalyticsPipeline:
             .first()
         )
         if already_processed:
-            logger.debug("[Pipeline] RawIntel id=%s already processed. Skipping.", raw_intel_id)
+            logger.debug(
+                "[Pipeline] RawIntel id=%s already processed. Skipping.",
+                raw_intel_id)
             return already_processed
 
         # 3. Classify text (two-stage)
-        scam_type, confidence = self.classifier.classify_text(raw_record.raw_text)
+        scam_type, confidence = self.classifier.classify_text(
+            raw_record.raw_text)
 
         # 4. Extract ScamDNA v2.0
         dna = self.extractor.extract_dna(raw_record.raw_text)
@@ -95,7 +102,10 @@ class AnalyticsPipeline:
 
         if is_suspicious:
             history = (
-                db.query(models.RawIntel.raw_text, models.ScamArtifact.campaign_id, models.ScamArtifact.scam_type)
+                db.query(
+                    models.RawIntel.raw_text,
+                    models.ScamArtifact.campaign_id,
+                    models.ScamArtifact.scam_type)
                 .join(models.ScamArtifact, models.RawIntel.id == models.ScamArtifact.raw_intel_id)
                 .filter(models.ScamArtifact.campaign_id.isnot(None))
                 .limit(300)   # Increased cap for better clustering accuracy
@@ -106,10 +116,7 @@ class AnalyticsPipeline:
                 for h in history
             ]
             assigned_campaign, similarity_score = self.clusterer.resolve_campaign(
-                raw_record.raw_text,
-                formatted_history,
-                new_scam_type=scam_type,
-            )
+                raw_record.raw_text, formatted_history, new_scam_type=scam_type, )
 
         # 7. Persist ScamArtifact with all new fields
         primary_state = dna.get("primary_state")
@@ -190,8 +197,7 @@ class AnalyticsPipeline:
                     f"Telegram: {','.join(dna.get('tg_links', []))}" if dna.get("tg_links") else "",
                     f"Aadhaar Refs: {len(dna.get('aadhaar_refs', []))} detected" if dna.get("aadhaar_refs") else "",
                     f"Banks: {','.join(dna.get('banks', []))}" if dna.get("banks") else "",
-                ] if f
-            ]
+                ] if f]
 
             log_output = f"""
 Threat Type: {scam_type}
@@ -204,12 +210,14 @@ Evidence Sources: {raw_record.source}
 Risk Level: {verdict} ({risk:.1f}/100)
 Recommended Action: {recommended_action}
 """
-            logger.info("\nOUTPUT FORMAT FOR EVERY DETECTED THREAT:\n%s", log_output.strip())
+            logger.info(
+                "\nOUTPUT FORMAT FOR EVERY DETECTED THREAT:\n%s",
+                log_output.strip())
 
         return artifact
 
 
-# ─── Registry Upsert Helpers ──────────────────────────────────────────────────
+# ─── Registry Upsert Helpers ────────────────────────────────────────────
 
 def _upsert_suspect_phone(
     db: Session,
@@ -248,7 +256,10 @@ def _upsert_suspect_phone(
             ))
         db.commit()
     except Exception as exc:
-        logger.error("[Pipeline] SuspectPhone upsert error for %s: %s", phone, exc)
+        logger.error(
+            "[Pipeline] SuspectPhone upsert error for %s: %s",
+            phone,
+            exc)
         db.rollback()
 
 
@@ -290,11 +301,18 @@ def _upsert_suspect_domain(
             ))
         db.commit()
     except Exception as exc:
-        logger.error("[Pipeline] SuspectDomain upsert error for %s: %s", url, exc)
+        logger.error(
+            "[Pipeline] SuspectDomain upsert error for %s: %s",
+            url,
+            exc)
         db.rollback()
 
 
-def _upsert_geo_heatmap(db: Session, state: str, scam_type: str, risk_score: float):
+def _upsert_geo_heatmap(
+        db: Session,
+        state: str,
+        scam_type: str,
+        risk_score: float):
     """Update IndiaGeoHeatmap counts for the detected state."""
     try:
         existing = db.query(models.IndiaGeoHeatmap).filter(
@@ -308,7 +326,8 @@ def _upsert_geo_heatmap(db: Session, state: str, scam_type: str, risk_score: flo
             elif risk_score >= 50.0:
                 existing.high_count += 1
             existing.last_updated = _utcnow()
-            # Keep track of most common scam type (simple approach: store latest)
+            # Keep track of most common scam type (simple approach: store
+            # latest)
             existing.top_scam_type = scam_type
         else:
             db.add(models.IndiaGeoHeatmap(
@@ -320,11 +339,14 @@ def _upsert_geo_heatmap(db: Session, state: str, scam_type: str, risk_score: flo
             ))
         db.commit()
     except Exception as exc:
-        logger.error("[Pipeline] GeoHeatmap upsert error for %s: %s", state, exc)
+        logger.error(
+            "[Pipeline] GeoHeatmap upsert error for %s: %s",
+            state,
+            exc)
         db.rollback()
 
 
-# ─── Verdict & Action Helpers ─────────────────────────────────────────────────
+# ─── Verdict & Action Helpers ───────────────────────────────────────────
 
 def _compute_verdict(risk_score: float) -> str:
     """Map numeric risk score to human-readable verdict string."""
@@ -344,13 +366,11 @@ def _compute_recommended_action(scam_type: str, risk_score: float) -> str:
         return (
             f"IMMEDIATE ACTION: Block all associated UPI IDs, domains, and phone numbers. "
             f"Issue public advisory for {scam_type}. Alert Nodal Officer and I4C. "
-            f"File complaint on cybercrime.gov.in."
-        )
+            f"File complaint on cybercrime.gov.in.")
     elif risk_score >= 60.0:
         return (
             f"Block associated UPI/domain infrastructure. Monitor {scam_type} campaign spread. "
-            f"Notify relevant state cyber cell."
-        )
+            f"Notify relevant state cyber cell.")
     elif risk_score >= 40.0:
         return "Investigate extracted entities. Add phone/domain to watch-list. Cross-reference with NCRP."
     else:

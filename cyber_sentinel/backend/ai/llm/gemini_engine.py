@@ -8,19 +8,22 @@ from typing import Dict, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class GeminiEngine:
     """
     Stage 2 of the Hybrid AI Pipeline: The Brain.
     Processes only the highly suspicious text that survives the local pre-filter.
     """
+
     def __init__(self):
         # The user will need to add GEMINI_API_KEY to their .env file
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            logger.warning("GEMINI_API_KEY not found in environment. Gemini Engine will run in simulation mode until configured.")
+            logger.warning(
+                "GEMINI_API_KEY not found in environment. Gemini Engine will run in simulation mode until configured.")
         else:
             genai.configure(api_key=api_key)
-            
+
         # Using the recommended model for text processing
         self.model_name = 'gemini-1.5-flash'
         try:
@@ -43,9 +46,7 @@ class GeminiEngine:
                 "extracted_entities": {
                     "urls": ["http://fake-sbi-kyc.com"],
                     "phones": [],
-                    "crypto_wallets": []
-                }
-            }
+                    "crypto_wallets": []}}
 
         prompt = f"""
         Act as an elite Cybersecurity Threat Analyst. Analyze the following social media post or message.
@@ -69,7 +70,8 @@ class GeminiEngine:
         try:
             response = self.model.generate_content(prompt)
             # Clean the markdown JSON formatting if Gemini wraps it
-            result_text = response.text.strip().removeprefix('```json').removesuffix('```').strip()
+            result_text = response.text.strip().removeprefix(
+                '```json').removesuffix('```').strip()
             return json.loads(result_text)
         except Exception as e:
             logger.error(f"Gemini API Error: {e}")
@@ -78,5 +80,7 @@ class GeminiEngine:
                 "risk_score": 50,
                 "confidence": 0.0,
                 "explanation": f"Failed to analyze via Gemini: {str(e)}",
-                "extracted_entities": {"urls": [], "phones": [], "crypto_wallets": []}
-            }
+                "extracted_entities": {
+                    "urls": [],
+                    "phones": [],
+                    "crypto_wallets": []}}
