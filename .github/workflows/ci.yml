@@ -31,7 +31,7 @@ jobs:
         working-directory: ./cyber_sentinel
         run: |
           pip install flake8
-          flake8 app/ --max-line-length=100 --ignore=E501,W503
+          flake8 backend/ --max-line-length=100 --ignore=E501,W503
 
       - name: Run tests
         working-directory: ./cyber_sentinel
