@@ -1,73 +1,33 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-*.pyc
-
-# Virtual environments
-.venv/
+# Environments
 venv/
 env/
-ENV/
-
-# Environment variables (NEVER commit secrets)
 .env
-.env.local
-.env.*.local
 
-# Telethon session files (contain auth tokens)
-*.session
-*.session-journal
-cyber_sentinel_session*
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Database files (contain live data)
+# Database (Ignore local copies and journals)
 *.db
 *.sqlite
 *.sqlite3
+cyber_sentinel.db
+cyber_sentinel.db-shm
+cyber_sentinel.db-wal
 
-# AI Model cache (large binary files)
-.cache/
-models/
-huggingface_cache/
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Logs
 *.log
 uvicorn.log
-logs/
+output.txt
 
-# OS artifacts
+# OS Files
 .DS_Store
 Thumbs.db
-desktop.ini
-
-# IDE / Editor
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# Python packaging
-*.egg-info/
-dist/
-build/
-.eggs/
-
-# Pytest
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Node (for future React production dashboard)
-node_modules/
-.next/
-out/
-
-# Docker
-.dockerignore
-
-# Streamlit
-.streamlit/secrets.toml

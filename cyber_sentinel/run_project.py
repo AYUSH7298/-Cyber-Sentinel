@@ -27,15 +27,15 @@ def launch():
         # Start uvicorn in background, redirecting output to uvicorn.log
         log_file = open("uvicorn.log", "w")
         subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8080"],
+            [sys.executable, "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", "8080"],
             stdout=log_file,
             stderr=subprocess.STDOUT
         )
         
         # Wait for backend port to open
         backend_started = False
-        for i in range(15):
-            print(f"    Waiting for backend to bind to port 8080 (attempt {i+1}/15)...")
+        for i in range(60):
+            print(f"    Waiting for backend to bind to port 8080 (attempt {i+1}/60)...")
             time.sleep(1)
             if is_port_open(8080):
                 print("[+] Success: FastAPI backend started successfully!")
@@ -54,7 +54,7 @@ def launch():
         print("[*] Status: Streamlit dashboard is OFFLINE. Starting server...")
         # Start streamlit in background
         subprocess.Popen(
-            [sys.executable, "-m", "streamlit", "run", "dashboard/app_ui.py", "--server.port", "8501"]
+            [sys.executable, "-m", "streamlit", "run", "frontend/app_ui.py", "--server.port", "8501"]
         )
         
         # Wait a moment for dashboard to bind

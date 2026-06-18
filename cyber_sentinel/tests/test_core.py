@@ -2,8 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.main import app
-from app import database, models
+from backend.main import app
+from backend import database, models
 
 # ─── Test Database Setup ───────────────────────────────────────
 SQLALCHEMY_TEST_URL = "sqlite:///./test_cyber_sentinel.db"
@@ -100,9 +100,9 @@ def test_alert_status_update_not_found():
 
 
 # ─── AI Unit Tests ────────────────────────────────────────────
-from app.ai.classifier import ScamClassifier
-from app.ai.dna_extractor import DNAExtractor
-from app.ai.clusterer import CampaignClusterer
+from backend.ai.classifier import ScamClassifier
+from backend.ai.dna_extractor import DNAExtractor
+from backend.ai.clusterer import CampaignClusterer
 
 
 def test_classifier_returns_tuple():

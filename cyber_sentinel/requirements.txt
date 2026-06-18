@@ -14,7 +14,7 @@ psycopg2-binary==2.9.10
 # --- AI / ML Stack ---
 transformers==4.47.1
 sentence-transformers==3.3.1
-torch>=2.9.0
+torch>=2.0.0
 tokenizers==0.21.0
 
 # --- NLP Utilities ---
@@ -38,6 +38,7 @@ python-dotenv==1.0.1
 
 # --- Dashboard / Visualization ---
 streamlit==1.41.1
+streamlit-autorefresh==1.0.1
 plotly==5.24.1
 folium==0.18.0
 streamlit-folium==0.23.1
@@ -69,4 +70,4 @@ prometheus-client==0.21.1
 # --- Development / Testing ---
 pytest==8.3.4
 pytest-asyncio==0.24.0
-httpx==0.28.1
+

@@ -1,17 +1,28 @@
-from telethon import TelegramClient
-from telethon.errors import (
-    FloodWaitError,
-    UsernameNotOccupiedError,
-    ChannelPrivateError,
-    SessionPasswordNeededError,
-)
 from sqlalchemy.orm import Session
-from app import models
-from app.config import settings
+from backend import models
+from backend.config import settings
 import asyncio
+import hashlib
 import logging
 
 logger = logging.getLogger(__name__)
+
+try:
+    from telethon import TelegramClient
+    from telethon.errors import (
+        FloodWaitError,
+        UsernameNotOccupiedError,
+        ChannelPrivateError,
+        SessionPasswordNeededError,
+    )
+    _TELETHON_AVAILABLE = True
+except ImportError:
+    _TELETHON_AVAILABLE = False
+    TelegramClient = None  # type: ignore[assignment,misc]
+    logger.warning(
+        "[Telethon] telethon library not installed. "
+        "Telegram collection will be disabled. Install with: pip install telethon"
+    )
 
 
 class TelegramCollector:
@@ -36,6 +47,10 @@ class TelegramCollector:
 
         Returns the count of newly ingested messages.
         """
+        if not _TELETHON_AVAILABLE:
+            logger.warning("[Telethon] telethon not installed. Skipping Telegram collection.")
+            return 0
+
         if not settings.is_telegram_configured:
             logger.warning(
                 "[Telethon] Credentials not configured (TG_API_ID / TG_API_HASH). "
@@ -52,7 +67,7 @@ class TelegramCollector:
             if not await client.is_user_authorized():
                 logger.error(
                     "[Telethon] Session '%s' is not authorized. "
-                    "Run: python -c \"from app.collectors.telegram_osint import *; "
+                    "Run: python -c \"from backend.collectors.telegram_osint import *; "
                     "import asyncio; asyncio.run(authorize_session())\" to authorize.",
                     self.session_name,
                 )
@@ -94,14 +109,22 @@ class TelegramCollector:
                 if len(text) < 20:
                     continue
 
-                # Deduplication check
+                # O(1) dedup via SHA-256 content_hash index
+                content_hash = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
                 exists = (
                     db.query(models.RawIntel)
-                    .filter(models.RawIntel.raw_text == text)
+                    .filter(models.RawIntel.content_hash == content_hash)
                     .first()
                 )
                 if not exists:
-                    db.add(models.RawIntel(source=f"telegram:{channel_username}", raw_text=text))
+                    is_hindi = any(0x0900 < ord(c) < 0x097F for c in text)
+                    db.add(models.RawIntel(
+                        source=f"telegram:{channel_username}",
+                        raw_text=text,
+                        content_hash=content_hash,
+                        source_url=f"https://t.me/{channel_username}",
+                        language="hi" if is_hindi else "en",
+                    ))
                     count += 1
 
             logger.info("[Telethon] Channel @%s → %d new messages", channel_username, count)
@@ -124,7 +147,7 @@ async def authorize_session():
     Run this once from the command line to create the Telethon session file.
 
     Usage:
-        python -c "import asyncio; from app.collectors.telegram_osint import authorize_session; asyncio.run(authorize_session())"
+        python -c "import asyncio; from backend.collectors.telegram_osint import authorize_session; asyncio.run(authorize_session())"
     """
     client = TelegramClient(
         settings.TELEGRAM_SESSION_NAME,
