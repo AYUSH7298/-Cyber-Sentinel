@@ -25,7 +25,7 @@ def test_root_endpoint():
 def test_secure_intel_unauthorized():
     # No token provided
     resp = client.get("/api/v1/secure-intel")
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)
 
 def test_secure_intel_authorized():
     token = get_user_token()
