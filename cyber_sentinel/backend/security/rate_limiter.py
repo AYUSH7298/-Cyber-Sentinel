@@ -6,6 +6,7 @@ from fastapi import FastAPI
 # Initialize Rate Limiter using the client's IP address
 limiter = Limiter(key_func=get_remote_address)
 
+
 def setup_rate_limiting(app: FastAPI):
     """
     Attaches the rate limiter and the exception handler to the FastAPI application.

@@ -32,6 +32,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
     """
     Validates the JWT token. Used as a FastAPI dependency to lock down endpoints.
@@ -40,7 +41,6 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Security(security))
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        role: str = payload.get("role")
         if username is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
         return payload
@@ -48,6 +48,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Security(security))
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication token")
+
 
 def require_admin_role(credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
     """
