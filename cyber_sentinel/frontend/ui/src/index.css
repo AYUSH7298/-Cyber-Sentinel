@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply transition-colors duration-300;
+  }
+}
+
+.glass-card-dark {
+  @apply bg-[#0F172A]/70 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg;
+}
+
+.glass-card-light {
+  @apply bg-white/70 backdrop-blur-xl border border-black/5 rounded-xl shadow-lg;
+}
+
+@keyframes pulse-once {
+  0% { background-color: rgba(34, 211, 238, 0.3); }
+  100% { background-color: transparent; }
+}
+.animate-pulse-once {
+  animation: pulse-once 1.5s ease-out;
+}

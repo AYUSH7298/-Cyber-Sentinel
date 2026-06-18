@@ -1,163 +1,70 @@
 import pytest
+import asyncio
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.main import app
-from app import database, models
+from backend.main import app
+from backend.security.auth import create_access_token
+from backend.ai.hybrid_pipeline import HybridPipeline
 
-# ─── Test Database Setup ───────────────────────────────────────
-SQLALCHEMY_TEST_URL = "sqlite:///./test_cyber_sentinel.db"
-
-test_engine = create_engine(
-    SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-
-models.Base.metadata.create_all(bind=test_engine)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[database.get_db] = override_get_db
+# Test Client
 client = TestClient(app)
 
+# ─── Auth Tokens ─────────────────────────────────────────────
+def get_admin_token():
+    return create_access_token({"sub": "admin_user", "role": "admin"})
 
-# ─── Health Check ─────────────────────────────────────────────
-def test_health_check():
-    resp = client.get("/health")
+def get_user_token():
+    return create_access_token({"sub": "standard_user", "role": "user"})
+
+
+# ─── API Endpoint Tests ──────────────────────────────────────
+def test_root_endpoint():
+    resp = client.get("/")
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "healthy"
+    assert "Core Engine Online" in resp.json()["status"]
 
+def test_secure_intel_unauthorized():
+    # No token provided
+    resp = client.get("/api/v1/secure-intel")
+    assert resp.status_code in (401, 403)
 
-# ─── Manual Ingestion ─────────────────────────────────────────
-def test_manual_ingestion_creates_record():
-    resp = client.post(
-        "/api/v1/intel/manual",
-        params={
-            "text": "WARNING: SBI KYC update required immediately. Visit http://sbi-kyc-fake.com",
-            "source": "manual",
-        },
-    )
+def test_secure_intel_authorized():
+    token = get_user_token()
+    resp = client.get("/api/v1/secure-intel", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] in ("queued", "duplicate")
-    assert "raw_intel_id" in data
+    assert "authenticated" in resp.json()["message"]
 
+def test_admin_trigger_scrapers_forbidden():
+    # User token does not have admin role
+    token = get_user_token()
+    resp = client.post("/api/v1/admin/trigger-scrapers", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 403
 
-def test_manual_ingestion_deduplication():
-    """Second identical ingestion should return 'duplicate'."""
-    text = "Unique test scam message for dedup testing http://scam-test-unique.com"
-    client.post("/api/v1/intel/manual", params={"text": text, "source": "manual"})
-    resp = client.post("/api/v1/intel/manual", params={"text": text, "source": "manual"})
-    data = resp.json()
-    assert data["status"] == "duplicate"
-
-
-def test_manual_ingestion_too_short():
-    """Ingestion of very short text should be rejected."""
-    resp = client.post(
-        "/api/v1/intel/manual",
-        params={"text": "short", "source": "manual"},
-    )
-    assert resp.status_code == 422   # FastAPI validation error
-
-
-# ─── Dashboard Feed ───────────────────────────────────────────
-def test_dashboard_feed_returns_list():
-    resp = client.get("/api/v1/analytics/dashboard-feed")
+def test_admin_trigger_scrapers_success():
+    # Admin token
+    token = get_admin_token()
+    resp = client.post("/api/v1/admin/trigger-scrapers", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    assert "Massive ingestion triggered" in resp.json()["message"]
 
 
-def test_threat_history_returns_list():
-    resp = client.get("/api/v1/analytics/threat-history")
-    assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+# ─── Hybrid AI Pipeline Tests ────────────────────────────────
+@pytest.mark.asyncio
+async def test_hybrid_pipeline_stage1_shield():
+    pipeline = HybridPipeline()
+    
+    # Safe message should be discarded
+    safe_text = "I had a great time at the park today with my dog."
+    assert pipeline.stage1_local_filter(safe_text) is False
+    
+    # Suspicious message should be flagged
+    scam_text = "URGENT! Your SBI account is blocked. Update KYC at http://fake-kyc.com"
+    assert pipeline.stage1_local_filter(scam_text) is True
 
-
-# ─── Alert Status Update ──────────────────────────────────────
-def test_alert_status_update_invalid_status():
-    resp = client.put(
-        "/api/v1/alerts/CAMP_001/status",
-        params={"status": "INVALID_STATUS"},
-    )
-    assert resp.status_code == 422
-
-
-def test_alert_status_update_not_found():
-    resp = client.put(
-        "/api/v1/alerts/NONEXISTENT_CAMPAIGN/status",
-        params={"status": "Acknowledged"},
-    )
-    assert resp.status_code == 404
-
-
-# ─── AI Unit Tests ────────────────────────────────────────────
-from app.ai.classifier import ScamClassifier
-from app.ai.dna_extractor import DNAExtractor
-from app.ai.clusterer import CampaignClusterer
-
-
-def test_classifier_returns_tuple():
-    clf = ScamClassifier()
-    label, confidence = clf.classify_text(
-        "Dear SBI user, your account is blocked. Update KYC at http://sbi-kyc-fake.com"
-    )
-    assert isinstance(label, str)
-    assert 0.0 <= confidence <= 1.0
-
-
-def test_classifier_safe_url_only():
-    clf = ScamClassifier()
-    label, conf = clf.classify_text("https://google.com")
-    assert label == "Safe / Non-Scam"
-
-
-def test_dna_extractor_extracts_url():
-    extractor = DNAExtractor()
-    dna = extractor.extract_dna("Click http://fake-kyc-sbi.com to update your KYC now!")
-    assert len(dna["urls"]) >= 1
-    assert any("fake-kyc-sbi.com" in u for u in dna["urls"])
-
-
-def test_dna_extractor_phone_number():
-    extractor = DNAExtractor()
-    dna = extractor.extract_dna("Call us at +91 9876543210 for your loan")
-    assert len(dna["phone_numbers"]) >= 1
-
-
-def test_dna_extractor_geo_references():
-    extractor = DNAExtractor()
-    dna = extractor.extract_dna("Fraud reported in Sector 56, Gurugram Haryana")
-    assert len(dna["geo_references"]) >= 1
-
-
-def test_risk_score_range():
-    extractor = DNAExtractor()
-    score = extractor.compute_risk("Phishing", 3, 5, phone_count=2, psych_count=4, confidence=0.9)
-    assert 0.0 <= score <= 100.0
-
-
-def test_clusterer_creates_new_campaign_when_empty():
-    clusterer = CampaignClusterer()
-    cid, score = clusterer.resolve_campaign("Some scam text", [])
-    assert cid == "CAMP_001"
-
-
-def test_clusterer_sequential_campaign_ids():
-    clusterer = CampaignClusterer()
-    existing = [
-        {"campaign_id": "CAMP_001", "text": "loan scam whatsapp deposit"},
-        {"campaign_id": "CAMP_002", "text": "investment crypto guaranteed returns"},
-    ]
-    cid, score = clusterer.resolve_campaign(
-        "Totally different sextortion blackmail video", existing, threshold=0.99
-    )
-    assert cid == "CAMP_003"
+@pytest.mark.asyncio
+async def test_hybrid_pipeline_integration():
+    pipeline = HybridPipeline()
+    
+    # Process a safe post (should return None because it's filtered)
+    safe_post = "Hey when are we meeting for dinner? Let me know."
+    result = await pipeline.process_post(safe_post)
+    assert result is None
