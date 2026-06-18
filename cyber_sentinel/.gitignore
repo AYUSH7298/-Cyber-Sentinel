@@ -1,33 +1,27 @@
 # Environments
-venv/
-env/
 .env
-
-# Python Cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Database (Ignore local copies and journals)
-*.db
-*.sqlite
-*.sqlite3
-cyber_sentinel.db
-cyber_sentinel.db-shm
-cyber_sentinel.db-wal
-
-# IDE / Editor
-.vscode/
-.idea/
-*.swp
-*.swo
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # Logs
 *.log
-uvicorn.log
-output.txt
+cyber_sentinel_runtime.log
 
-# OS Files
-.DS_Store
-Thumbs.db
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
